@@ -128,7 +128,20 @@ class ReindexJob extends AbstractQueuedJob implements QueuedJob
             return;
         }
 
-        $documents = $fetcher->fetch($this->getBatchSize(), $this->getFetchOffset());
+        /**
+         * Adjusted document fetching to resolve missing document issues.
+         *
+         * There have been reports of missing documents in the indexing process,
+         * as noted in the following tickets:
+         * WNZ-376 [spike/do]Listings missing from site https://dnadesign.atlassian.net/browse/WNZ-376
+         *  AG-272 [Spike] Staff Profiles have disappeared from Production https://dnadesign.atlassian.net/browse/AG-272
+         *
+         * The original implementation constrained the fetch operation to a set batch size,
+         * which led to scenarios where certain documents were unintentionally excluded
+         * from the indexing operation if they were not part of the current batch being
+         * processed.
+         */
+        $documents = $fetcher->fetch(null, $this->getFetchOffset());
 
         $indexer = Indexer::create($documents, Indexer::METHOD_ADD, $this->getBatchSize());
         $indexer->setProcessDependencies(false);
